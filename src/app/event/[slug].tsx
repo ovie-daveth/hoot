@@ -44,7 +44,7 @@ export default function EventDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <EventCover title={event.title} imageUrl={event.coverImageUrl ?? null} />
+        <EventCover slug={event.slug} title={event.title} imageUrl={event.coverImageUrl ?? null} />
         <ThemedView style={styles.content}>
           <Button variant="secondary" onPress={() => router.back()} style={styles.backButton}>
             Back

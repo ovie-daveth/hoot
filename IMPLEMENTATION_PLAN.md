@@ -192,6 +192,7 @@ Discover polish (same day, user request — Luma-style):
 - Honest equivalents only: category chips map to REAL filter params (no decorative data); city cards derive from `venue.city`; time filters computed server-side (mock) from actual timestamps. No "Featured Calendars" (needs organiser profile surface in contracts — deferred) and no fake city photos (emoji badges instead; real imagery needs an asset/proxy strategy from backend).
 - Contract changes: `Venue.city` (optional, nullable) added to shared schema; `EventFilters` gains `city` + `when`; `/events` query-param table in docs updated; mock listEvents implements `when`/`city` (weekend = Fri/Sat/Sun starts within 10d in event's timezone) + description search + upcoming sort.
 - Mock data: Lagos/Abuja/Nairobi offline venues now carry `city`; added 2 published events ("Startup Grind Abuja", "Nairobi Founder Social") with ticket types.
+- City UX revision (user feedback): city cards are now a horizontally scrolling row with generated city art (`scripts/gen-city-images.mjs` → bundled PNGs in `assets/images/cities/`, flat gradient-skyline illustrations, zero network deps); tapping a city navigates to a dedicated page `city/[name]` (typed route auto-generated) filtered server-side by `city` — in-place filtering removed.
 
 ### Phase 6 — Create-event wizard
 - [ ] Steps: basic info → date/time (+timezone) → format → venue (Places stub) or online link → admission → tickets (if paid) → capacity/registration window → review

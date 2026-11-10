@@ -1,62 +1,64 @@
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, View, type ImageRequireSource } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { EventCard } from '@/components/event-card';
-import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
-import { Chip } from '@/components/ui/chip';
-import { Input } from '@/components/ui/input';
+import { useEvents } from '@/api/queries/events';
+import { EventCard, coverArtFor } from '@/components/event-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { Chip } from '@/components/ui/chip';
+import { Input } from '@/components/ui/input';
+import { EmptyState, ErrorState, LoadingState } from '@/components/ui/states';
 import { Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
-import { useEvents } from '@/api/queries/events';
-import { toApiError } from '@shared/errors';
 import type { EventAdmission, EventFormat } from '@shared/contracts';
+import { toApiError } from '@shared/errors';
 
-type QuickFilterKey = 'all' | 'thisWeek' | 'weekend' | 'free' | 'paid' | 'online' | 'inPerson';
+type WhenFilter = 'any' | 'this_week' | 'weekend';
+type AdmissionFilter = 'any' | 'free' | 'paid';
+type FormatFilter = 'any' | 'online' | 'inPerson';
 
-const QUICK_FILTERS: { key: QuickFilterKey; label: string }[] = [
-  { key: 'all', label: '✨ All' },
-  { key: 'thisWeek', label: '🗓️ This week' },
+const WHEN_FILTERS: { key: WhenFilter; label: string }[] = [
+  { key: 'any', label: '🗓️ Any time' },
+  { key: 'this_week', label: 'This week' },
   { key: 'weekend', label: '🌙 Weekend' },
-  { key: 'free', label: '🎟️ Free' },
-  { key: 'paid', label: '💳 Paid' },
-  { key: 'online', label: '💻 Online' },
-  { key: 'inPerson', label: '📍 In person' },
 ];
 
-const CITY_EMOJI: Record<string, string> = {
-  Lagos: '🌊',
-  Abuja: '🏛️',
-  Nairobi: '🏢',
-  Accra: '🌴',
-};
+const ADMISSION_FILTERS: { key: AdmissionFilter; label: string }[] = [
+  { key: 'any', label: '🎟️ Any price' },
+  { key: 'free', label: 'Free' },
+  { key: 'paid', label: '💳 Paid' },
+];
 
-type EventFiltersInput = {
-  query?: string;
-  format?: EventFormat;
-  admission?: EventAdmission;
-  city?: string;
-  when?: 'this_week' | 'weekend';
+const FORMAT_FILTERS: { key: FormatFilter; label: string }[] = [
+  { key: 'any', label: '📍 Any format' },
+  { key: 'online', label: '💻 Online' },
+  { key: 'inPerson', label: 'In person' },
+];
+
+const CITY_IMAGES: Record<string, ImageRequireSource> = {
+  Lagos: require('@/assets/images/cities/lagos.png'),
+  Abuja: require('@/assets/images/cities/abuja.png'),
+  Nairobi: require('@/assets/images/cities/nairobi.png'),
 };
 
 export default function DiscoverScreen() {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  const [quick, setQuick] = useState<QuickFilterKey>('all');
-  const [city, setCity] = useState<string | null>(null);
+  const [when, setWhen] = useState<WhenFilter>('any');
+  const [admission, setAdmission] = useState<AdmissionFilter>('any');
+  const [format, setFormat] = useState<FormatFilter>('any');
+  const allClear = when === 'any' && admission === 'any' && format === 'any';
 
-  const filters: EventFiltersInput = useMemo(
+  const filters: { query?: string; format?: EventFormat; admission?: EventAdmission; when?: 'this_week' | 'weekend' } = useMemo(
     () => ({
       query: query.trim() ? query : undefined,
-      format: quick === 'online' ? 'online' : quick === 'inPerson' ? 'offline' : undefined,
-      admission: quick === 'free' ? 'free' : quick === 'paid' ? 'paid' : undefined,
-      when: quick === 'thisWeek' ? 'this_week' : quick === 'weekend' ? 'weekend' : undefined,
-      city: city ?? undefined,
+      format: format === 'online' ? 'online' : format === 'inPerson' ? 'offline' : undefined,
+      admission: admission === 'any' ? undefined : admission,
+      when: when === 'any' ? undefined : when,
     }),
-    [query, quick, city],
+    [query, when, admission, format],
   );
 
   const baseQuery = useEvents({});
@@ -95,44 +97,68 @@ export default function DiscoverScreen() {
               accessibilityLabel="Search events"
             />
             <ThemedText type="smallBold">Categories</ThemedText>
-            <ThemedView style={styles.filterRow}>
-              {QUICK_FILTERS.map((option) => (
+            <ThemedView style={styles.filterGroup}>
+              {WHEN_FILTERS.map((option) => (
                 <Chip
                   key={option.key}
                   label={option.label}
-                  selected={quick === option.key}
-                  onPress={() => setQuick(option.key)}
+                  selected={when === option.key}
+                  onPress={() => setWhen(option.key)}
                 />
               ))}
+            </ThemedView>
+            <ThemedView style={styles.filterGroup}>
+              {ADMISSION_FILTERS.map((option) => (
+                <Chip
+                  key={option.key}
+                  label={option.label}
+                  selected={admission === option.key}
+                  onPress={() => setAdmission(option.key)}
+                />
+              ))}
+            </ThemedView>
+            <ThemedView style={styles.filterGroup}>
+              {FORMAT_FILTERS.map((option) => (
+                <Chip
+                  key={option.key}
+                  label={option.label}
+                  selected={format === option.key}
+                  onPress={() => setFormat(option.key)}
+                />
+              ))}
+              {!allClear ? (
+                <Chip
+                  label="✕ Clear all"
+                  onPress={() => {
+                    setWhen('any');
+                    setAdmission('any');
+                    setFormat('any');
+                  }}
+                />
+              ) : null}
             </ThemedView>
             {cities.length > 0 ? (
               <ThemedView style={styles.citiesBlock}>
                 <ThemedText type="smallBold">Cities</ThemedText>
-                <ThemedView style={styles.cityRow}>
-                  <CityCard
-                    name="All cities"
-                    selected={city === null}
-                    onPress={() => setCity(null)}
-                  />
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={styles.cityRow}>
                   {cities.map((name) => (
                     <CityCard
                       key={name}
                       name={name}
-                      selected={city === name}
-                      onPress={() => setCity((current) => (current === name ? null : name))}
+                      onPress={() =>
+                        router.push({ pathname: '/city/[name]', params: { name } })
+                      }
                     />
                   ))}
-                </ThemedView>
+                </ScrollView>
               </ThemedView>
             ) : null}
             <ThemedText type="smallBold">
               {eventsQuery.isLoading ? 'Loading events…' : `${events.length} events`}
             </ThemedText>
-            {city ? (
-              <ThemedText type="small" themeColor="textSecondary">
-                Filtered to {city}
-              </ThemedText>
-            ) : null}
           </ThemedView>
         }
         renderItem={({ item }) => (
@@ -158,7 +184,7 @@ export default function DiscoverScreen() {
           return (
             <EmptyState
               title="No events found"
-              body="Try other categories, another city, or clear your search."
+              body="Try other categories, or clear your search."
             />
           );
         })()}
@@ -167,32 +193,18 @@ export default function DiscoverScreen() {
   );
 }
 
-function CityCard({
-  name,
-  selected,
-  onPress,
-}: {
-  name: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  const emoji = CITY_EMOJI[name] ?? (name === 'All cities' ? '🌍' : '📍');
-  const isAllRow = name === 'All cities';
+function CityCard({ name, onPress }: { name: string; onPress: () => void }) {
+  const source = CITY_IMAGES[name];
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.cityPressed}>
-      <ThemedView
-        type="backgroundElement"
-        style={[
-          styles.cityCard,
-          selected && { borderColor: theme.text, borderWidth: 2 },
-        ]}>
-        <ThemedView type="backgroundSelected" style={styles.cityEmojiBadge}>
-          <ThemedText>{emoji}</ThemedText>
-        </ThemedView>
+      <View style={styles.cityCard}>
+        {source ? (
+          <Image source={source} style={styles.cityImage} contentFit="cover" />
+        ) : (
+          <Image source={coverArtFor(`city:${name}`)} style={styles.cityImage} contentFit="cover" />
+        )}
         <ThemedText style={styles.cityName}>{name}</ThemedText>
-        {isAllRow ? null : null}
-      </ThemedView>
+      </View>
     </Pressable>
   );
 }
@@ -203,37 +215,47 @@ const styles = StyleSheet.create({
   },
   header: {
     gap: Spacing.three,
-    paddingBottom: Spacing.four,
+    paddingTop: Spacing.three,
   },
   filterRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
-  citiesBlock: {
-    gap: Spacing.two,
-  },
-  cityRow: {
+  filterGroup: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.two,
   },
+  citiesBlock: {
+    gap: Spacing.two,
+    paddingBottom: Spacing.four,
+  },
+  cityRow: {
+    gap: Spacing.two,
+    paddingRight: Spacing.four,
+  },
   cityCard: {
     width: 168,
-    height: 104,
+    height: 210,
     borderRadius: 16,
-    padding: Spacing.three,
-    justifyContent: 'space-between',
+    overflow: 'hidden',
   },
-  cityEmojiBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  cityImage: {
+    flex: 1,
+    width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
   cityName: {
+    position: 'absolute',
+    left: Spacing.three,
+    bottom: Spacing.three,
     fontWeight: 600,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   cityPressed: {
     opacity: 0.85,

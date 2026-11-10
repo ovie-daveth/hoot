@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet, type ImageRequireSource } from 'react-native';
 
 import { Chip } from '@/components/ui/chip';
 import { ThemedText } from '@/components/themed-text';
@@ -8,6 +8,23 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { formatEventStart } from '@/lib/datetime';
 import type { PublicEvent } from '@shared/contracts';
+
+const COVER_ART: ImageRequireSource[] = [
+  require('@/assets/images/eventCovers/cover-aurora.png'),
+  require('@/assets/images/eventCovers/cover-confetti.png'),
+  require('@/assets/images/eventCovers/cover-waves.png'),
+  require('@/assets/images/eventCovers/cover-orbs.png'),
+  require('@/assets/images/eventCovers/cover-rings.png'),
+  require('@/assets/images/eventCovers/cover-dune.png'),
+];
+
+export function coverArtFor(seedText: string): ImageRequireSource {  let h = 2166136261;
+  for (const ch of seedText) {
+    h ^= ch.charCodeAt(0);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return COVER_ART[h % COVER_ART.length];
+}
 
 export type EventCardProps = {
   event: PublicEvent;
@@ -18,7 +35,7 @@ export function EventCard({ event, onPress }: EventCardProps) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView type="backgroundElement" style={styles.card}>
-        <EventCover title={event.title} imageUrl={event.coverImageUrl ?? null} />
+        <EventCover slug={event.slug} title={event.title} imageUrl={event.coverImageUrl ?? null} />
         <ThemedView type="backgroundElement" style={styles.body}>
           <ThemedText style={styles.title}>{event.title}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
@@ -34,7 +51,15 @@ export function EventCard({ event, onPress }: EventCardProps) {
   );
 }
 
-export function EventCover({ title, imageUrl }: { title: string; imageUrl: string | null }) {
+export function EventCover({
+  slug,
+  title,
+  imageUrl,
+}: {
+  slug: string;
+  title: string;
+  imageUrl: string | null;
+}) {
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(imageUrl) && !failed;
 
@@ -49,20 +74,13 @@ export function EventCover({ title, imageUrl }: { title: string; imageUrl: strin
       />
     );
   }
-  const monogram = title
-    .split(' ')
-    .filter((word) => word.length > 0)
-    .slice(0, 2)
-    .map((word) => word.charAt(0).toLocaleUpperCase())
-    .join('');
   return (
-    <ThemedView
-      type="backgroundSelected"
-      style={[styles.cover, styles.monogram]}>
-      <ThemedText type="subtitle" themeColor="textSecondary">
-        {monogram || '•'}
-      </ThemedText>
-    </ThemedView>
+    <Image
+      source={coverArtFor(slug || title)}
+      style={styles.cover}
+      contentFit="cover"
+      accessibilityLabel={title}
+    />
   );
 }
 
@@ -77,10 +95,6 @@ const styles = StyleSheet.create({
   cover: {
     width: '100%',
     aspectRatio: 16 / 9,
-  },
-  monogram: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   body: {
     padding: Spacing.three,
