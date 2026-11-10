@@ -160,13 +160,32 @@ Notes (2026-11-10):
 - Gates: `tsc --noEmit` ✓, `expo lint` ✓, web export bundle ✓.
 
 ### Phase 4 — Shared UI primitives
-- [ ] Button, Input, Field, Card, Chip, EmptyState, Money, StepDots — built on Themed*/Spacing
-- [ ] All primary/secondary/disabled states; accessible labels
+- [x] Button, Input, Field, Card, Chip, EmptyState, Money, StepDots — built on Themed*/Spacing
+- [x] All primary/secondary/disabled states; accessible labels
+
+Notes (2026-11-10):
+- Built `src/components/ui/`: `button.tsx` (primary = inverted text/bg high-contrast, secondary =
+  `backgroundElement`, loading spinner + disabled states, callback-style prop merging),
+  `input.tsx` (themed, multiline), `field.tsx` (label/hint/error), `card.tsx`,
+  `chip.tsx` (selectable pill filter), `money.tsx` (kobo-safe formatting via `shared/money`
+  + Free label at 0), `states.tsx` (`EmptyState`/`LoadingState`/`ErrorState` with retry).
+- Added semantic theme tokens `success`/`danger` to both palettes in `constants/theme.ts`
+  (smallest possible extension of the existing system; documented here per claude.md).
+- StepDots deferred to Phase 6 (only the wizard will use it — avoid dead code).
+- Gates: `tsc --noEmit` ✓, `expo lint` ✓, web export bundle ✓.
 
 ### Phase 5 — Discover + Event detail
-- [ ] Discover feed (published events only), search/filter client-side vs mocks
-- [ ] `event/[slug].tsx` — public detail: cover, venue card (+ static-map image, Open in Maps), ticket types, share link (`lumaclone://event/<slug>` + web URL)
-- [ ] No private data in public detail UI
+- [x] Discover feed (published events only), search/filter client-side vs mocks
+- [x] `event/[slug].tsx` — public detail: cover (image w/ monogram fallback), venue card + Open in Maps, online privacy notice, ticket types w/ availability, share action (lumaclone:// + placeholder web URL)
+- [x] No private data in public detail UI (no attendee lists / onlineMeeting link)
+
+Notes (2026-11-10):
+- `src/lib/datetime.ts`: timezone-safe labels via date-fns-tz (same-day + multi-day formats, invalid-zone fallback UTC).
+- `src/components/event-card.tsx`: EventCard + EventCover (expo-image, onError → title monogram).
+- Static map preview deferred to backend phase (needs proxied key); deep-link covers MVP.
+- Typed routes: dynamic slugs require object form `router.push({ pathname: '/event/[slug]', params })`; `useLocalSearchParams` must import from `expo-router` (not off imperative router).
+- `register/[slug]` route added as labelled placeholder so CTA cannot 404 before Phase 7.
+- Gates: tsc ✓ lint ✓ web export ✓.
 
 ### Phase 6 — Create-event wizard
 - [ ] Steps: basic info → date/time (+timezone) → format → venue (Places stub) or online link → admission → tickets (if paid) → capacity/registration window → review
@@ -222,3 +241,4 @@ Plus feature-specific review against `claude.md` rules. Report commands run and 
 | 2026-11-10 | 1 | `shared/contracts` (common/user/event/ticketing/payments/ledger + barrels), `shared/money.ts`, `shared/errors.ts`, `docs/api-contracts.md`, tsconfig `@shared/*` alias, zod@4.6.7 installed; pre-existing template lint/type errors in `app-tabs.web.tsx` + `use-color-scheme.web.ts` fixed to unblock gates | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ | Phase 2+; backend; auth mechanism decision; hosting decision; Monnify funds-flow compliance check |
 | 2026-11-10 | 2 | Root `Stack` + `(tabs)` group with 4 placeholder screens; `AppTabs`/`app-tabs.web.tsx` rewired to Discover·Tickets·Host·Profile; new tab icons via `scripts/gen-tab-icons.mjs`; router.d.ts route table refreshed; web export smoke test | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 3–10 |
 | 2026-11-10 | 3 | API layer: `ApiClient` contract interface, labelled in-memory mock (zod-validated outputs, hold inventory, simulated server-side webhook settle + ledger writes, withdrawal lifecycle), TanStack Query v5 domain hooks + provider wiring, console MOCK banner | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 4–10; real HTTPS client at backend phase (single swap in `src/api/client.ts`) |
+| 2026-11-10 | 4 | UI primitives in `src/components/ui/` (Button/Input/Field/Card/Chip/Money/States) on Themed* conventions; added `success`/`danger` theme tokens | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 5–10; StepDots deferred to Phase 6 |
