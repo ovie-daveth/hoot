@@ -94,7 +94,7 @@ export const CheckInOutcome = z.discriminatedUnion('outcome', [
       'already_checked_in',
       'refunded',
     ]),
-    code: OpaqueToken,
+    code: z.string().min(1).max(96),
   }),
 ]);
 export type CheckInOutcome = z.infer<typeof CheckInOutcome>;
