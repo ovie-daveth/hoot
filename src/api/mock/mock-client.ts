@@ -1,4 +1,5 @@
 import { ApiError } from '@shared/errors';
+import { formatInTimeZone } from 'date-fns-tz';
 import {
   COMMISSION_RATE_BPS_DEFAULT,
   addMoney,
@@ -282,17 +283,40 @@ const requireUpsertTitle = (input: EventUpsertInput): string => {
   return input.title;
 };
 
+const isWithinNextDays = (startsAt: string, days: number): boolean => {
+  const startMs = Date.parse(startsAt);
+  const nowMs = Date.now();
+  return startMs >= nowMs && startMs < nowMs + days * 24 * 60 * 60 * 1000;
+};
+
+const startsWeekday = (startsAt: string, timezone: string): string =>
+  formatInTimeZone(new Date(startsAt), timezone, 'EEE');
+
 export function createMockApiClient(): ApiClient {
   return {
     async getEvents(filters: EventFilters = {}): Promise<PublicEvent[]> {
       await sleep(MOCK_LATENCY_MS);
       const query = filters.query?.toLocaleLowerCase().trim() ?? '';
-      return publicEvents().filter((event) => {
-        const matchesQuery = query.length === 0 || event.title.toLocaleLowerCase().includes(query);
-        const matchesFormat = !filters.format || event.format === filters.format;
-        const matchesAdmission = !filters.admission || event.admission === filters.admission;
-        return matchesQuery && matchesFormat && matchesAdmission;
-      });
+      const city = filters.city?.toLocaleLowerCase().trim() ?? '';
+      return publicEvents()
+        .filter((event) => {
+          const matchesQuery =
+            query.length === 0 ||
+            event.title.toLocaleLowerCase().includes(query) ||
+            event.description.toLocaleLowerCase().includes(query);
+          const matchesFormat = !filters.format || event.format === filters.format;
+          const matchesAdmission = !filters.admission || event.admission === filters.admission;
+          const matchesCity =
+            city.length === 0 || event.venue?.city?.toLocaleLowerCase() === city;
+          const matchesWhen =
+            !filters.when ||
+            (filters.when === 'this_week' && isWithinNextDays(event.startsAt, 7)) ||
+            (filters.when === 'weekend' &&
+              isWithinNextDays(event.startsAt, 10) &&
+              /^(Fri|Sat|Sun)/.test(startsWeekday(event.startsAt, event.timezone)));
+          return matchesQuery && matchesFormat && matchesAdmission && matchesCity && matchesWhen;
+        })
+        .sort((left, right) => Date.parse(left.startsAt) - Date.parse(right.startsAt));
     },
 
     async getEventBySlug(slug: string): Promise<PublicEvent> {

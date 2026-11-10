@@ -37,7 +37,7 @@ endpoints existed. **Mock data must never be mistaken for production behaviour.*
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| GET | `/events?q&format&admission` | none | Discovery feed. Published + non-cancelled only. Returns `PublicEvent[]`. |
+| GET | `/events?q&format&admission&city&when` | none | Discovery feed. Published + non-cancelled only. `when` ∈ `this_week` (starts within next 7d) / `weekend` (Fri–Sun starts in event timezone). Returns `PublicEvent[]`. |
 | GET | `/events/:slug` | none | Public detail → `PublicEvent`. Drafts/cancelled → `not_found`. |
 | GET | `/events/:slug/ticket-types` | none | Active ticket types + availability. |
 

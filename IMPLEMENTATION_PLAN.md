@@ -187,6 +187,12 @@ Notes (2026-11-10):
 - `register/[slug]` route added as labelled placeholder so CTA cannot 404 before Phase 7.
 - Gates: tsc ✓ lint ✓ web export ✓.
 
+Discover polish (same day, user request — Luma-style):
+- Screenshot-inspired Discover redesign: title + search, "Categories" emoji chips (All / This week / Weekend / Free / Paid / Online / In person — single-select), "Cities" tappable city cards (All + Lagos/Abuja/Nairobi from venue data), filtered event list with count header.
+- Honest equivalents only: category chips map to REAL filter params (no decorative data); city cards derive from `venue.city`; time filters computed server-side (mock) from actual timestamps. No "Featured Calendars" (needs organiser profile surface in contracts — deferred) and no fake city photos (emoji badges instead; real imagery needs an asset/proxy strategy from backend).
+- Contract changes: `Venue.city` (optional, nullable) added to shared schema; `EventFilters` gains `city` + `when`; `/events` query-param table in docs updated; mock listEvents implements `when`/`city` (weekend = Fri/Sat/Sun starts within 10d in event's timezone) + description search + upcoming sort.
+- Mock data: Lagos/Abuja/Nairobi offline venues now carry `city`; added 2 published events ("Startup Grind Abuja", "Nairobi Founder Social") with ticket types.
+
 ### Phase 6 — Create-event wizard
 - [ ] Steps: basic info → date/time (+timezone) → format → venue (Places stub) or online link → admission → tickets (if paid) → capacity/registration window → review
 - [ ] Draft save vs publish clearly separated actions

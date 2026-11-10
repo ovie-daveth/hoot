@@ -19,12 +19,12 @@ export function EventCard({ event, onPress }: EventCardProps) {
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
       <ThemedView type="backgroundElement" style={styles.card}>
         <EventCover title={event.title} imageUrl={event.coverImageUrl ?? null} />
-        <ThemedView style={styles.body}>
+        <ThemedView type="backgroundElement" style={styles.body}>
           <ThemedText style={styles.title}>{event.title}</ThemedText>
           <ThemedText type="small" themeColor="textSecondary">
             {formatEventStart(event.startsAt, event.timezone)}
           </ThemedText>
-          <ThemedView style={styles.chipRow}>
+          <ThemedView type="backgroundElement" style={styles.chipRow}>
             <Chip label={event.format === 'online' ? 'Online' : 'In person'} />
             <Chip label={event.admission === 'free' ? 'Free' : 'Paid'} />
           </ThemedView>

@@ -25,6 +25,8 @@ export type EventFilters = {
   query?: string;
   format?: EventFormat;
   admission?: EventAdmission;
+  city?: string;
+  when?: 'this_week' | 'weekend';
 };
 
 export type AttendeeListEntry = {

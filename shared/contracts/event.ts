@@ -14,6 +14,7 @@ export type EventStatus = z.infer<typeof EventStatus>;
 export const Venue = z.object({
   name: z.string().min(1).max(200),
   address: z.string().max(500).nullish(),
+  city: z.string().min(1).max(96).nullish(),
   placeId: z.string().min(1).max(255).nullish(),
   lat: z.number().gte(-90).lte(90).nullish(),
   lng: z.number().gte(-180).lte(180).nullish(),

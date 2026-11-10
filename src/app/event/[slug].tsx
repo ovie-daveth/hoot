@@ -1,5 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Linking, Share, ScrollView, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { EventCover } from '@/components/event-card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +19,7 @@ import type { PublicEvent } from '@shared/contracts';
 
 export default function EventDetailScreen() {
   const router = useRouter();
+  const inset = useSafeAreaInsets();
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const eventQuery = useEvent(slug);
   const event = eventQuery.data;
@@ -60,7 +62,7 @@ export default function EventDetailScreen() {
           <TicketSection paid={event.admission === 'paid'} ticketTypesQuery={ticketTypesQuery} />
         </ThemedView>
       </ScrollView>
-      <ThemedView style={styles.ctaRow}>
+      <ThemedView style={[styles.ctaRow, { paddingBottom: inset.bottom + Spacing.two }]}>
         <Button onPress={() => router.push({ pathname: '/register/[slug]', params: { slug } })}>
           Register
         </Button>
@@ -184,8 +186,8 @@ function TicketSection({
         const remaining = Math.max(0, ticketType.quantityTotal - ticketType.quantitySold);
         return (
           <Card key={ticketType.id}>
-            <ThemedView style={styles.ticketRow}>
-              <ThemedView style={styles.ticketInfo}>
+            <ThemedView type="backgroundElement" style={styles.ticketRow}>
+              <ThemedView type="backgroundElement" style={styles.ticketInfo}>
                 <ThemedText>{ticketType.name}</ThemedText>
                 {ticketType.description ? (
                   <ThemedText type="small" themeColor="textSecondary">
@@ -211,6 +213,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.four,
     paddingBottom: Spacing.four,
     gap: Spacing.three,
   },
@@ -218,7 +221,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: Spacing.two,
     paddingHorizontal: Spacing.four,
-    paddingVertical: Spacing.two,
+    paddingTop: Spacing.two,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(0,0,0,0.1)',
   },
