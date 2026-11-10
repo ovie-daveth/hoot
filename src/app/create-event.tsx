@@ -1,18 +1,20 @@
-import { z } from 'zod';
+import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import { formatInTimeZone, fromZonedTime } from 'date-fns-tz';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { useState, type Dispatch, type SetStateAction } from 'react';
 import {
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { z } from 'zod';
 
 import { useCreateEventMutation, useMyEvents, usePublishEventMutation, useUpdateEventMutation } from '@/api/queries/events';
 import {
@@ -20,18 +22,18 @@ import {
   useTicketTypes,
   useUpdateTicketTypeMutation,
 } from '@/api/queries/tickets';
+import type { CreateTicketTypeInput } from '@/api/types';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Chip } from '@/components/ui/chip';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { StepDots } from '@/components/ui/step-dots';
 import { ErrorState, LoadingState } from '@/components/ui/states';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
+import { StepDots } from '@/components/ui/step-dots';
 import { Spacing } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
-import type { CreateTicketTypeInput } from '@/api/types';
 import {
   EventUpsertInput,
   OnlineMeeting,
@@ -78,10 +80,9 @@ type EventDraft = {
 };
 
 const timezoneDefault = 'Africa/Lagos';
-let ticketDraftCounter = 0;
 
 const makeTicketDraft = (): TicketDraft => ({
-  localId: `ticket-${++ticketDraftCounter}`,
+  localId: `ticket-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   name: '',
   description: '',
   price: '',
@@ -577,10 +578,12 @@ function EventWizard({
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <KeyboardAvoidingView
         style={styles.keyboardView}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        enabled>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           showsVerticalScrollIndicator={false}>
           <ThemedView style={styles.header}>
             <Button variant="secondary" onPress={() => router.back()} style={styles.backButton}>
@@ -628,25 +631,31 @@ function EventWizard({
           <ThemedView style={styles.navigation}>
             <Button
               variant="secondary"
+              compact={currentStep === 'review'}
               onPress={() => {
                 setStepError(undefined);
                 setStepIndex((index) => Math.max(0, index - 1));
               }}
               disabled={stepIndex === 0 || saving}
-              style={styles.navButton}>
+              style={currentStep === 'review' ? styles.reviewPrevious : styles.navButton}>
               Previous
             </Button>
             {currentStep === 'review' ? (
               <>
                 <Button
                   variant="secondary"
+                  compact
                   onPress={() => void save(false)}
                   loading={saving}
-                  style={styles.navButton}>
+                  style={styles.reviewAction}>
                   Save draft
                 </Button>
-                <Button onPress={() => void save(true)} loading={saving} style={styles.navButton}>
-                  Publish event
+                <Button
+                  compact
+                  onPress={() => void save(true)}
+                  loading={saving}
+                  style={styles.reviewAction}>
+                  Publish
                 </Button>
               </>
             ) : (
@@ -791,7 +800,7 @@ function BasicStep({
       <ThemedView style={styles.mediaActions}>
         <ThemedView style={styles.halfField}>
           <Button variant="secondary" onPress={() => void pickMedia()} loading={picking}>
-            Choose from device
+            Upload
           </Button>
         </ThemedView>
         <ThemedView style={styles.halfField}>
@@ -920,36 +929,393 @@ function DateStep({
   draft: EventDraft;
   updateDraft: <K extends keyof EventDraft>(key: K, value: EventDraft[K]) => void;
 }) {
+  const theme = useTheme();
+  const [timezonePickerVisible, setTimezonePickerVisible] = useState(false);
+
   return (
     <ThemedView style={styles.section}>
-      <StepHeading title="When is it?" body="Enter local dates and times, then choose the event's timezone." />
-      <Field label="Starts at" hint="Format: YYYY-MM-DDTHH:mm (for example 2026-12-01T18:00).">
-        <Input
-          value={draft.startsAt}
-          onChangeText={(value) => updateDraft('startsAt', value)}
-          placeholder="2026-12-01T18:00"
-          autoCapitalize="none"
-          accessibilityLabel="Event start date and time"
-        />
+      <StepHeading title="When is it?" body="Choose the event dates and times in the event's timezone." />
+      <DateTimeField
+        label="Starts at"
+        value={draft.startsAt}
+        timezone={draft.timezone}
+        onChange={(value) => updateDraft('startsAt', value)}
+      />
+      <DateTimeField
+        label="Ends at"
+        value={draft.endsAt}
+        timezone={draft.timezone}
+        onChange={(value) => updateDraft('endsAt', value)}
+      />
+      <Field label="Timezone">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Event timezone: ${timezoneLabel(draft.timezone)}`}
+          onPress={() => setTimezonePickerVisible(true)}
+          style={({ pressed }) => [
+            styles.pickerTrigger,
+            { backgroundColor: theme.backgroundElement },
+            pressed && styles.pickerTriggerPressed,
+          ]}>
+          <ThemedText>{timezoneLabel(draft.timezone)}</ThemedText>
+          <ThemedText type="small" themeColor="textSecondary">⌄</ThemedText>
+        </Pressable>
       </Field>
-      <Field label="Ends at">
-        <Input
-          value={draft.endsAt}
-          onChangeText={(value) => updateDraft('endsAt', value)}
-          placeholder="2026-12-01T20:00"
-          autoCapitalize="none"
-          accessibilityLabel="Event end date and time"
+      <TimezonePickerModal
+        visible={timezonePickerVisible}
+        selectedTimezone={draft.timezone}
+        onSelect={(timezone) => {
+          updateDraft('timezone', timezone);
+          setTimezonePickerVisible(false);
+        }}
+        onClose={() => setTimezonePickerVisible(false)}
+      />
+    </ThemedView>
+  );
+}
+
+const TIMEZONE_OPTIONS = [
+  'Africa/Abidjan', 'Africa/Accra', 'Africa/Cairo', 'Africa/Casablanca',
+  'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi', 'Africa/Tunis',
+  'America/Anchorage', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Mexico_City', 'America/New_York', 'America/Sao_Paulo',
+  'Asia/Bangkok', 'Asia/Dubai', 'Asia/Hong_Kong', 'Asia/Jakarta', 'Asia/Kolkata',
+  'Asia/Seoul', 'Asia/Shanghai', 'Asia/Singapore', 'Asia/Tokyo',
+  'Australia/Melbourne', 'Australia/Sydney', 'Europe/Amsterdam', 'Europe/Berlin',
+  'Europe/Istanbul', 'Europe/London', 'Europe/Paris', 'Pacific/Auckland', 'UTC',
+] as const;
+
+function timezoneLabel(timezone: string): string {
+  return timezone.replace(/_/g, ' ').replace('/', ' / ');
+}
+
+function DateTimeField({
+  label,
+  value,
+  timezone,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  timezone: string;
+  onChange: (value: string) => void;
+}) {
+  const theme = useTheme();
+  const [calendarVisible, setCalendarVisible] = useState(false);
+  const [timeVisible, setTimeVisible] = useState(false);
+  const [datePart, timePart] = value.split('T');
+  const [year, month, day] = datePart?.split('-').map(Number) ?? [];
+  const [hour, minute] = timePart?.split(':').map(Number) ?? [];
+  const dateLabel = Number.isFinite(year) && Number.isFinite(month) && Number.isFinite(day)
+    ? new Intl.DateTimeFormat(undefined, {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(new Date(year, month - 1, day))
+    : 'Select date';
+  const timeLabel = Number.isFinite(hour) && Number.isFinite(minute)
+    ? new Intl.DateTimeFormat(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'UTC',
+      }).format(new Date(Date.UTC(2020, 0, 1, hour, minute)))
+    : 'Select time';
+
+  return (
+    <ThemedView style={styles.dateTimeField}>
+      <ThemedText type="smallBold">{label}</ThemedText>
+      <ThemedView style={styles.dateTimeRow}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label} date: ${dateLabel}`}
+          accessibilityHint="Opens calendar"
+          onPress={() => setCalendarVisible(true)}
+          style={({ pressed }) => [
+            styles.pickerTrigger,
+            styles.dateTrigger,
+            { backgroundColor: theme.backgroundElement },
+            pressed && styles.pickerTriggerPressed,
+          ]}>
+          <ThemedText type="small" themeColor="textSecondary">Date</ThemedText>
+          <ThemedText type="smallBold">{dateLabel}</ThemedText>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${label} time: ${timeLabel}`}
+          accessibilityHint="Opens time selector"
+          onPress={() => setTimeVisible(true)}
+          style={({ pressed }) => [
+            styles.pickerTrigger,
+            styles.timeTrigger,
+            { backgroundColor: theme.backgroundElement },
+            pressed && styles.pickerTriggerPressed,
+          ]}>
+          <ThemedText type="small" themeColor="textSecondary">Time</ThemedText>
+          <ThemedText type="smallBold">{timeLabel}</ThemedText>
+        </Pressable>
+      </ThemedView>
+      <ThemedText type="small" themeColor="textSecondary">{timezone}</ThemedText>
+      {calendarVisible ? (
+        <CalendarPickerModal
+          value={value}
+          onClose={() => setCalendarVisible(false)}
+          onSelect={(nextValue) => {
+            onChange(nextValue);
+            setCalendarVisible(false);
+          }}
         />
-      </Field>
-      <Field label="Timezone" hint="Use an IANA timezone name.">
-        <Input
-          value={draft.timezone}
-          onChangeText={(value) => updateDraft('timezone', value)}
-          placeholder="Africa/Lagos"
-          autoCapitalize="none"
-          accessibilityLabel="Event timezone"
+      ) : null}
+      {timeVisible ? (
+        <TimePickerModal
+          value={value}
+          onClose={() => setTimeVisible(false)}
+          onSelect={(nextValue) => {
+            onChange(nextValue);
+            setTimeVisible(false);
+          }}
         />
-      </Field>
+      ) : null}
+    </ThemedView>
+  );
+}
+
+function CalendarPickerModal({
+  value,
+  onSelect,
+  onClose,
+}: {
+  value: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const [datePart, timePart] = value.split('T');
+  const [year, month, day] = datePart?.split('-').map(Number) ?? [];
+  const [hour, minute] = timePart?.split(':').map(Number) ?? [];
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(year, month - 1, 1));
+  const daysInMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0).getDate();
+  const leadingDays = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1).getDay();
+  const cells: (number | null)[] = [
+    ...Array.from({ length: leadingDays }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+  ];
+  while (cells.length % 7 !== 0) cells.push(null);
+  const monthLabel = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(visibleMonth);
+
+  const chooseDay = (selectedDay: number) => {
+    const date = `${visibleMonth.getFullYear()}-${String(visibleMonth.getMonth() + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    onSelect(`${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+  };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <ThemedView style={[styles.modalCard, { backgroundColor: theme.background }]}>
+          <ThemedView style={styles.modalHeader}>
+            <ThemedText type="smallBold">Select a date</ThemedText>
+            <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
+              <ThemedText type="smallBold">Close</ThemedText>
+            </Pressable>
+          </ThemedView>
+          <ThemedView style={styles.calendarHeader}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Previous month"
+              onPress={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))}
+              style={styles.calendarArrow}>
+              <ThemedText type="subtitle" style={styles.arrowText}>‹</ThemedText>
+            </Pressable>
+            <ThemedText type="smallBold">{monthLabel}</ThemedText>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Next month"
+              onPress={() => setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))}
+              style={styles.calendarArrow}>
+              <ThemedText type="subtitle" style={styles.arrowText}>›</ThemedText>
+            </Pressable>
+          </ThemedView>
+          <View style={styles.weekRow}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
+              <ThemedText key={weekday} type="small" themeColor="textSecondary" style={styles.weekday}>{weekday}</ThemedText>
+            ))}
+          </View>
+          {Array.from({ length: cells.length / 7 }, (_, row) => (
+            <View key={row} style={styles.weekRow}>
+              {cells.slice(row * 7, row * 7 + 7).map((cell, column) => {
+                const selected = cell === day && year === visibleMonth.getFullYear() && month === visibleMonth.getMonth() + 1;
+                return (
+                  <View key={`${row}-${column}`} style={styles.dayCell}>
+                    {cell ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={`${monthLabel} ${cell}`}
+                        accessibilityState={{ selected }}
+                        onPress={() => chooseDay(cell)}
+                        style={[styles.dayButton, selected && { backgroundColor: theme.text }]}>
+                        <ThemedText type="small" style={[styles.dayNumber, selected && { color: theme.background }]}>
+                          {cell}
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          ))}
+          <Button variant="secondary" compact onPress={onClose}>Cancel</Button>
+        </ThemedView>
+      </View>
+    </Modal>
+  );
+}
+
+function TimePickerModal({
+  value,
+  onSelect,
+  onClose,
+}: {
+  value: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const [datePart, timePart] = value.split('T');
+  const [year, month, day] = datePart?.split('-').map(Number) ?? [];
+  const [initialHour, initialMinute] = timePart?.split(':').map(Number) ?? [];
+  const [selectedHour, setSelectedHour] = useState(initialHour % 12 || 12);
+  const [selectedMinute, setSelectedMinute] = useState(Math.round(initialMinute / 5) * 5 % 60);
+  const [period, setPeriod] = useState<'AM' | 'PM'>(initialHour >= 12 ? 'PM' : 'AM');
+  const adjustHour = (amount: number) => setSelectedHour((current) => ((current - 1 + amount + 12) % 12) + 1);
+  const adjustMinute = (amount: number) => setSelectedMinute((current) => (current + amount + 60) % 60);
+
+  const confirm = () => {
+    const hour24 = (selectedHour % 12) + (period === 'PM' ? 12 : 0);
+    onSelect(`${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hour24).padStart(2, '0')}:${String(selectedMinute).padStart(2, '0')}`);
+  };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <ThemedView style={[styles.modalCard, { backgroundColor: theme.background }]}>
+          <ThemedView style={styles.modalHeader}>
+            <ThemedText type="smallBold">Select a time</ThemedText>
+            <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
+              <ThemedText type="smallBold">Close</ThemedText>
+            </Pressable>
+          </ThemedView>
+          <ThemedText style={styles.timeModalValue}>
+            {selectedHour}:{String(selectedMinute).padStart(2, '0')} {period}
+          </ThemedText>
+          <ThemedView style={styles.timeModalControls}>
+            <TimePart label="Hour" value={selectedHour} onDecrease={() => adjustHour(-1)} onIncrease={() => adjustHour(1)} />
+            <ThemedText type="subtitle" style={styles.timeColon}>:</ThemedText>
+            <TimePart label="Minute" value={selectedMinute} onDecrease={() => adjustMinute(-5)} onIncrease={() => adjustMinute(5)} />
+          </ThemedView>
+          <ThemedView style={styles.periodRow}>
+            {(['AM', 'PM'] as const).map((option) => (
+              <Pressable
+                key={option}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: period === option }}
+                onPress={() => setPeriod(option)}
+                style={[styles.periodButton, { backgroundColor: period === option ? theme.text : theme.backgroundElement }]}>
+                <ThemedText type="smallBold" style={{ color: period === option ? theme.background : theme.text }}>{option}</ThemedText>
+              </Pressable>
+            ))}
+          </ThemedView>
+          <ThemedText type="small" themeColor="textSecondary" style={styles.timeModalHint}>Minutes change in 5-minute steps</ThemedText>
+          <ThemedView style={styles.modalActions}>
+            <Button variant="secondary" compact onPress={onClose} style={styles.modalAction}>Cancel</Button>
+            <Button compact onPress={confirm} style={styles.modalAction}>Done</Button>
+          </ThemedView>
+        </ThemedView>
+      </View>
+    </Modal>
+  );
+}
+
+function TimezonePickerModal({
+  visible,
+  selectedTimezone,
+  onSelect,
+  onClose,
+}: {
+  visible: boolean;
+  selectedTimezone: string;
+  onSelect: (timezone: string) => void;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <ThemedView style={[styles.modalCard, styles.timezoneModalCard, { backgroundColor: theme.background }]}>
+          <ThemedView style={styles.modalHeader}>
+            <ThemedText type="smallBold">Select timezone</ThemedText>
+            <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
+              <ThemedText type="smallBold">Close</ThemedText>
+            </Pressable>
+          </ThemedView>
+          <ScrollView style={styles.timezoneList} showsVerticalScrollIndicator={false}>
+            {TIMEZONE_OPTIONS.map((timezone) => {
+              const selected = timezone === selectedTimezone;
+              return (
+                <Pressable
+                  key={timezone}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected }}
+                  onPress={() => onSelect(timezone)}
+                  style={[styles.timezoneOption, selected && { backgroundColor: theme.backgroundSelected }]}>
+                  <ThemedText type={selected ? 'smallBold' : 'small'}>{timezoneLabel(timezone)}</ThemedText>
+                  {selected ? <ThemedText type="smallBold">✓</ThemedText> : null}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </ThemedView>
+      </View>
+    </Modal>
+  );
+}
+
+function TimePart({
+  label,
+  value,
+  onDecrease,
+  onIncrease,
+}: {
+  label: string;
+  value: number;
+  onDecrease: () => void;
+  onIncrease: () => void;
+}) {
+  const theme = useTheme();
+
+  return (
+    <ThemedView style={styles.timePart}>
+      <ThemedText type="small" themeColor="textSecondary">{label}</ThemedText>
+      <ThemedView style={styles.timeControls}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Decrease ${label.toLowerCase()}`}
+          onPress={onDecrease}
+          style={[styles.timeAdjust, { backgroundColor: theme.backgroundSelected }]}>
+          <ThemedText type="smallBold">−</ThemedText>
+        </Pressable>
+        <ThemedText style={styles.timeValue}>
+          {String(Number.isFinite(value) ? value : 0).padStart(2, '0')}
+        </ThemedText>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Increase ${label.toLowerCase()}`}
+          onPress={onIncrease}
+          style={[styles.timeAdjust, { backgroundColor: theme.backgroundSelected }]}>
+          <ThemedText type="smallBold">+</ThemedText>
+        </Pressable>
+      </ThemedView>
     </ThemedView>
   );
 }
@@ -1205,7 +1571,8 @@ function TicketsStep({
       <Button
         variant="secondary"
         onPress={() => {
-          setTicketRows((current) => [...current, makeTicketDraft()]);
+          const newTicket = makeTicketDraft();
+          setTicketRows((current) => [...current, newTicket]);
           setStepError(undefined);
         }}>
         Add ticket type
@@ -1382,17 +1749,184 @@ const styles = StyleSheet.create({
   choiceRow: {
     flexDirection: 'row',
     gap: Spacing.two,
+    padding: Spacing.two,
+    borderRadius: 12,
+  },
+  dateTimeField: {
+    gap: Spacing.two,
+  },
+  dateTimeRow: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  pickerTrigger: {
+    minHeight: 38,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: 12,
+  },
+  pickerTriggerPressed: {
+    opacity: 0.72,
+  },
+  dateTrigger: {
+    flex: 1.4,
+    alignItems: 'flex-start',
+  },
+  timeTrigger: {
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  modalBackdrop: {
+    flex: 1,
+    justifyContent: 'center',
+    padding: Spacing.four,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 420,
+    alignSelf: 'center',
+    gap: Spacing.three,
+    padding: Spacing.four,
+    borderRadius: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  calendarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  calendarArrow: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrowText: {
+    lineHeight: 36,
+  },
+  weekRow: {
+    flexDirection: 'row',
+  },
+  weekday: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 12,
+  },
+  dayCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.half,
+  },
+  dayButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayNumber: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  timezoneModalCard: {
+    maxHeight: '80%',
+  },
+  timezoneList: {
+    flexGrow: 0,
+  },
+  timezoneOption: {
+    minHeight: 48,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.two,
+    borderRadius: 10,
+  },
+  timeModalValue: {
+    textAlign: 'center',
+    fontSize: 32,
+    lineHeight: 40,
+    fontWeight: 700,
+    fontVariant: ['tabular-nums'],
+  },
+  timeModalControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.four,
+    paddingVertical: Spacing.two,
+  },
+  periodRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: Spacing.two,
+  },
+  periodButton: {
+    minWidth: 76,
+    alignItems: 'center',
+    paddingVertical: Spacing.two,
+    borderRadius: 10,
+  },
+  timeModalHint: {
+    textAlign: 'center',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: Spacing.two,
+  },
+  modalAction: {
+    flex: 1,
+  },
+  timePart: {
+    alignItems: 'center',
+    gap: Spacing.one,
+  },
+  timeControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+  },
+  timeAdjust: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  timeValue: {
+    minWidth: 42,
+    textAlign: 'center',
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: 700,
+    fontVariant: ['tabular-nums'],
+  },
+  timeColon: {
+    marginTop: Spacing.three,
   },
   halfField: {
     flex: 1,
   },
   ticketCard: {
-    gap: Spacing.two,
+    gap: Spacing.three,
+    padding: Spacing.four,
   },
   ticketHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
+    borderRadius: 8,
   },
   removeButton: {
     minHeight: 36,
@@ -1403,15 +1937,27 @@ const styles = StyleSheet.create({
   },
   reviewRow: {
     gap: Spacing.half,
+    paddingVertical: Spacing.half,
+    paddingHorizontal: Spacing.two,
+    borderRadius: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
   },
   reviewValue: {
     fontWeight: 600,
   },
   navigation: {
     flexDirection: 'row',
-    gap: Spacing.two,
+    gap: Spacing.one,
+    alignItems: 'center',
   },
   navButton: {
+    
+  },
+  reviewPrevious: {
+    flexGrow: 0,
+    flexBasis: 86,
+  },
+  reviewAction: {
     flex: 1,
   },
 });

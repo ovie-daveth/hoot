@@ -214,6 +214,8 @@ Notes (2026-11-10):
 - The former Host tab is now Community, retaining the draft list and adding a floating create
   button. The first wizard item is a rectangular image/video cover picker with paste-link support.
   Device videos are limited to 30 seconds; media is previewed with Expo Image/Video.
+- Start and end are selected independently in themed calendar modals; time uses a separate 12-hour
+  AM/PM modal with five-minute increments, and the event timezone is chosen from a dropdown list.
 - Gaps: selected device media is local-only in mock mode until a trusted upload/storage API exists;
   Places autocomplete/map preview await the backend proxy; per-ticket sale windows follow the
   event's registration window rather than having separate controls.
@@ -272,3 +274,4 @@ Plus feature-specific review against `claude.md` rules. Report commands run and 
 | 2026-11-10 | 4 | UI primitives in `src/components/ui/` (Button/Input/Field/Card/Chip/Money/States) on Themed* conventions; added `success`/`danger` theme tokens | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 5–10; StepDots deferred to Phase 6 |
 | 2026-11-10 | 6 update | Replaced Host tab with Community, added bottom-left create-event FAB, placed rectangular image/video picker first in the wizard, added link entry and video preview (30-second limit), and added optional public `coverVideoUrl` contract support | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ · `git diff --check` ✓ | Device files remain local-only until media storage API is implemented |
 | 2026-11-10 | 6 | Guided create-event wizard, timezone-aware date entry, online/offline and free/paid paths, multiple ticket types, capacity/registration windows, review, explicit draft/publish actions, and Host draft-resume list; added StepDots UI | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Mock persistence only; image upload, Places autocomplete/map preview, and independent ticket sales windows remain deferred |
+| 2026-11-10 | 6 update | Moved start/end calendar selection into separate modals, added a 12-hour AM/PM time modal, and replaced timezone text entry with a selectable timezone list | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ · `git diff --check` ✓ | Timezone list is curated; add additional IANA zones if product coverage requires them |

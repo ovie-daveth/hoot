@@ -9,6 +9,7 @@ export type ButtonVariant = 'primary' | 'secondary';
 export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
   variant?: ButtonVariant;
   loading?: boolean;
+  compact?: boolean;
   children: ReactNode;
   style?: StyleProp<ViewStyle> | ((state: PressableStateCallbackType) => StyleProp<ViewStyle>);
 };
@@ -16,6 +17,7 @@ export type ButtonProps = Omit<PressableProps, 'children' | 'style'> & {
 export function Button({
   variant = 'primary',
   loading = false,
+  compact = false,
   disabled,
   style,
   children,
@@ -26,6 +28,7 @@ export function Button({
 
   const resolveStyle = (state: PressableStateCallbackType): StyleProp<ViewStyle> => [
     styles.base,
+    compact && styles.compact,
     {
       backgroundColor: variant === 'primary' ? theme.text : theme.backgroundElement,
     },
@@ -38,6 +41,7 @@ export function Button({
       <Text
         style={[
           styles.label,
+          compact && styles.compactLabel,
           { color: variant === 'primary' ? theme.background : theme.text },
         ]}>
         {children}
@@ -61,6 +65,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
+  compact: {
+    minHeight: 40,
+    borderRadius: 10,
+  },
   dimmed: {
     opacity: 0.8,
   },
@@ -71,6 +79,12 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingHorizontal: Spacing.four,
     paddingVertical: Spacing.three,
+  },
+  compactLabel: {
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.two,
   },
   spinner: {
     position: 'absolute',
