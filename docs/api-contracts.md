@@ -30,6 +30,12 @@ endpoints existed. **Mock data must never be mistaken for production behaviour.*
 - **Privacy invariants**: public payloads never include attendee lists, private online meeting
   links (`PublicEvent` omits them by schema), organiser financial data, internal notes, or
   payment secrets. Draft/cancelled events are unreachable via public endpoints.
+- **Event cover media**: `Event`/`PublicEvent` may include an HTTPS `coverImageUrl` or
+  `coverVideoUrl` (maximum 30 seconds). Device-selected local URIs are mock-only and must be
+  uploaded to trusted media storage before production publication; the future backend validates
+  MIME type, size, duration, and ownership. The Expo app currently previews a selected local file
+  and keeps its URI in mock memory; this is not a shared upload and does not survive as production
+  media.
 - **Ids**: UUID v4. Ticket codes / guest-retrieval tokens: opaque, non-guessable
   (`OpaqueToken`), independent of personal data.
 

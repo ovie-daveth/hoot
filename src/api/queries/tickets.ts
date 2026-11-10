@@ -66,23 +66,37 @@ export function useCheckInMutation(eventId: string) {
   });
 }
 
-export function useCreateTicketTypeMutation(eventId: string) {
+export function useCreateTicketTypeMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: Parameters<typeof api.createTicketType>[1]) =>
-      api.createTicketType(eventId, input),
-    onSuccess: () => {
+    mutationFn: ({
+      eventId,
+      input,
+    }: {
+      eventId: string;
+      input: Parameters<typeof api.createTicketType>[1];
+    }) => api.createTicketType(eventId, input),
+    onSuccess: (_data, variables) => {
+      const { eventId } = variables;
       void queryClient.invalidateQueries({ queryKey: ticketKeys.eventTypes(eventId) });
     },
   });
 }
 
-export function useUpdateTicketTypeMutation(eventId: string) {
+export function useUpdateTicketTypeMutation() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, input }: { id: string; input: Parameters<typeof api.updateTicketType>[1] }) =>
-      api.updateTicketType(id, input),
-    onSuccess: () => {
+    mutationFn: ({
+      eventId,
+      id,
+      input,
+    }: {
+      eventId: string;
+      id: string;
+      input: Parameters<typeof api.updateTicketType>[1];
+    }) => api.updateTicketType(id, input),
+    onSuccess: (_data, variables) => {
+      const { eventId } = variables;
       void queryClient.invalidateQueries({ queryKey: ticketKeys.eventTypes(eventId) });
     },
   });

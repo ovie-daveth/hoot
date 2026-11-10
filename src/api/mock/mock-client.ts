@@ -342,6 +342,7 @@ export function createMockApiClient(): ApiClient {
         title: input.title,
         description: input.description ?? '',
         coverImageUrl: input.coverImageUrl ?? null,
+        coverVideoUrl: input.coverVideoUrl ?? null,
         organiserId: MOCK_ORGANISER_USER_ID,
         startsAt: input.startsAt ?? null,
         endsAt: input.endsAt ?? null,

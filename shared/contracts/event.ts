@@ -35,6 +35,7 @@ const eventObject = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(10_000),
   coverImageUrl: z.url().nullish(),
+  coverVideoUrl: z.url().nullish(),
   organiserId: z.uuid(),
   startsAt: IsoDateTime,
   endsAt: IsoDateTime,

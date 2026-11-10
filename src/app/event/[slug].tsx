@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Linking, Share, ScrollView, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -44,7 +45,16 @@ export default function EventDetailScreen() {
   return (
     <ThemedView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        <EventCover slug={event.slug} title={event.title} imageUrl={event.coverImageUrl ?? null} />
+        {event.coverVideoUrl ? (
+          <EventVideoCover uri={event.coverVideoUrl} />
+        ) : (
+          <EventCover
+            slug={event.slug}
+            title={event.title}
+            imageUrl={event.coverImageUrl ?? null}
+            style={styles.eventCover}
+          />
+        )}
         <ThemedView style={styles.content}>
           <Button variant="secondary" onPress={() => router.back()} style={styles.backButton}>
             Back
@@ -77,6 +87,23 @@ export default function EventDetailScreen() {
         </Button>
       </ThemedView>
     </ThemedView>
+  );
+}
+
+function EventVideoCover({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (videoPlayer) => {
+    videoPlayer.loop = true;
+    videoPlayer.muted = true;
+    videoPlayer.play();
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.eventCover}
+      contentFit="cover"
+      nativeControls
+    />
   );
 }
 
@@ -210,6 +237,11 @@ function TicketSection({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  eventCover: {
+    width: '100%',
+    height: 220,
+    borderRadius: 0,
   },
   content: {
     paddingHorizontal: Spacing.four,

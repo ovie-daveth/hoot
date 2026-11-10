@@ -5,6 +5,7 @@ import { FlatList, Pressable, ScrollView, StyleSheet, View, type ImageRequireSou
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useEvents } from '@/api/queries/events';
+import { CreateEventFab } from '@/components/create-event-fab';
 import { EventCard, coverArtFor } from '@/components/event-card';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -21,7 +22,7 @@ type FormatFilter = 'any' | 'online' | 'inPerson';
 
 const WHEN_FILTERS: { key: WhenFilter; label: string }[] = [
   { key: 'any', label: '🗓️ Any time' },
-  { key: 'this_week', label: 'This week' },
+  { key: 'this_week', label: 'weekday' },
   { key: 'weekend', label: '🌙 Weekend' },
 ];
 
@@ -189,6 +190,7 @@ export default function DiscoverScreen() {
           );
         })()}
       />
+      <CreateEventFab />
     </SafeAreaView>
   );
 }
@@ -196,7 +198,7 @@ export default function DiscoverScreen() {
 function CityCard({ name, onPress }: { name: string; onPress: () => void }) {
   const source = CITY_IMAGES[name];
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.cityPressed}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.cityPressable, pressed && styles.cityPressed]}>
       <View style={styles.cityCard}>
         {source ? (
           <Image source={source} style={styles.cityImage} contentFit="cover" />
@@ -234,24 +236,29 @@ const styles = StyleSheet.create({
   cityRow: {
     gap: Spacing.two,
     paddingRight: Spacing.four,
+    alignItems: 'center',
   },
-  cityCard: {
-    width: 168,
-    height: 210,
-    borderRadius: 16,
+  cityPressable: {
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  cityImage: {
-    flex: 1,
-    width: '100%',
-    alignItems: 'center',
+  cityCard: {
+    width: 108,
+    height: 52,
+    borderRadius: 14,
+    overflow: 'hidden',
     justifyContent: 'center',
+    paddingHorizontal: Spacing.three,
+  },
+  cityImage: {
+    ...StyleSheet.absoluteFill,
+    width: '100%',
+    height: '100%',
   },
   cityName: {
-    position: 'absolute',
-    left: Spacing.three,
-    bottom: Spacing.three,
-    fontWeight: 600,
+    position: 'relative',
+    zIndex: 1,
+    fontWeight: 700,
     color: '#FFFFFF',
     textShadowColor: 'rgba(0,0,0,0.55)',
     textShadowOffset: { width: 0, height: 1 },

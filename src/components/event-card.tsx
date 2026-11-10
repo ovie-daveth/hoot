@@ -1,13 +1,17 @@
-import { Image } from 'expo-image';
-import { useState } from 'react';
-import { Pressable, StyleSheet, type ImageRequireSource } from 'react-native';
-
-import { Chip } from '@/components/ui/chip';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { formatEventStart } from '@/lib/datetime';
 import type { PublicEvent } from '@shared/contracts';
+import { Image } from 'expo-image';
+import { useState } from 'react';
+import {
+  Pressable,
+  StyleSheet,
+  type ImageRequireSource,
+  type ImageStyle,
+  type StyleProp,
+} from 'react-native';
 
 const COVER_ART: ImageRequireSource[] = [
   require('@/assets/images/eventCovers/cover-aurora.png'),
@@ -32,19 +36,38 @@ export type EventCardProps = {
 };
 
 export function EventCard({ event, onPress }: EventCardProps) {
+  const description = event.description.trim();
+  const summary = description.length > 50 ? `${description.slice(0, 45)}…` : description;
+
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView type="backgroundElement" style={styles.card}>
+      <ThemedView style={styles.card}>
         <EventCover slug={event.slug} title={event.title} imageUrl={event.coverImageUrl ?? null} />
-        <ThemedView type="backgroundElement" style={styles.body}>
-          <ThemedText style={styles.title}>{event.title}</ThemedText>
-          <ThemedText type="small" themeColor="textSecondary">
-            {formatEventStart(event.startsAt, event.timezone)}
-          </ThemedText>
-          <ThemedView type="backgroundElement" style={styles.chipRow}>
-            <Chip label={event.format === 'online' ? 'Online' : 'In person'} />
-            <Chip label={event.admission === 'free' ? 'Free' : 'Paid'} />
+        <ThemedView style={styles.body}>
+          <ThemedView style={styles.details}>
+            <ThemedText style={styles.title}>{event.title}</ThemedText>
+               <ThemedView style={styles.badgeRow}>
+            <ThemedView type="backgroundSelected" style={styles.badge}>
+              <ThemedText style={styles.badgeLabel} type="small">
+                {event.format === 'online' ? 'Online' : 'In person'}
+              </ThemedText>
+            </ThemedView>
+            <ThemedView type="backgroundSelected" style={styles.badge}>
+              <ThemedText style={styles.badgeLabel} type="small">
+                {event.admission === 'free' ? 'Free' : 'Paid'}
+              </ThemedText>
+            </ThemedView>
           </ThemedView>
+            <ThemedText style={styles.subtitle} type="small" themeColor="textSecondary">
+              {formatEventStart(event.startsAt, event.timezone)}
+            </ThemedText>
+            {summary ? (
+              <ThemedText style={styles.description} type="small" themeColor="textSecondary">
+                {summary}
+              </ThemedText>
+            ) : null}
+          </ThemedView>
+
         </ThemedView>
       </ThemedView>
     </Pressable>
@@ -55,10 +78,12 @@ export function EventCover({
   slug,
   title,
   imageUrl,
+  style,
 }: {
   slug: string;
   title: string;
   imageUrl: string | null;
+  style?: StyleProp<ImageStyle>;
 }) {
   const [failed, setFailed] = useState(false);
   const showImage = Boolean(imageUrl) && !failed;
@@ -67,7 +92,7 @@ export function EventCover({
     return (
       <Image
         source={{ uri: imageUrl as string }}
-        style={styles.cover}
+        style={[styles.cover, style]}
         contentFit="cover"
         onError={() => setFailed(true)}
         transition={200}
@@ -77,7 +102,7 @@ export function EventCover({
   return (
     <Image
       source={coverArtFor(slug || title)}
-      style={styles.cover}
+      style={[styles.cover, style]}
       contentFit="cover"
       accessibilityLabel={title}
     />
@@ -86,26 +111,56 @@ export function EventCover({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 12,
-    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: Spacing.three,
   },
   pressed: {
     opacity: 0.85,
   },
   cover: {
-    width: '100%',
-    aspectRatio: 16 / 9,
+    width: 96,
+    height: 96,
+    borderRadius: 12,
   },
   body: {
-    padding: Spacing.three,
-    gap: Spacing.two,
+    flex: 1,
+    justifyContent: 'space-between',
+    gap: Spacing.one,
+  },
+  details: {
+    gap: Spacing.one,
   },
   title: {
-    fontWeight: 600,
+    fontWeight: 700,
+    fontSize: 14,
+    lineHeight: 16,
   },
-  chipRow: {
+  subtitle: {
+    fontWeight: 300,
+    fontSize: 12,
+    lineHeight: 14,
+    fontStyle: 'italic',
+  },
+  description: {
+    fontWeight: 400,
+    fontSize: 12,
+    lineHeight: 14,
+  },
+  badgeRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'flex-start',
     gap: Spacing.two,
+    marginVertical: Spacing.half,
+  },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+  },
+  badgeLabel: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: 600,
   },
 });

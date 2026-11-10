@@ -91,6 +91,7 @@ Monnify webhooks (signature-verified, idempotent) + cron (hold expiry, payout re
 | `@tanstack/react-query` | Server-state hooks; same hooks work over mock or real client |
 | `zod` | Shared contract schemas (shared/ + api layer validation) |
 | `expo-image-picker` | Event cover image selection |
+| `expo-video` | Muted cover-video preview and event-detail playback |
 | `expo-camera` | Check-in QR scanner (`CameraView`) |
 | `expo-secure-store` | Auth/session + guest ticket token storage |
 | `react-native-svg` + `react-native-qrcode-svg` | Ticket QR rendering |
@@ -195,9 +196,29 @@ Discover polish (same day, user request — Luma-style):
 - City UX revision (user feedback): city cards are now a horizontally scrolling row with generated city art (`scripts/gen-city-images.mjs` → bundled PNGs in `assets/images/cities/`, flat gradient-skyline illustrations, zero network deps); tapping a city navigates to a dedicated page `city/[name]` (typed route auto-generated) filtered server-side by `city` — in-place filtering removed.
 
 ### Phase 6 — Create-event wizard
-- [ ] Steps: basic info → date/time (+timezone) → format → venue (Places stub) or online link → admission → tickets (if paid) → capacity/registration window → review
-- [ ] Draft save vs publish clearly separated actions
-- [ ] Field validation via shared schemas
+- [x] Steps: basic info → date/time (+timezone) → format → venue (Places stub) or online link → admission → tickets (if paid) → capacity/registration window → review
+- [x] Draft save vs publish clearly separated actions
+- [x] Field validation via shared schemas
+
+Notes (2026-11-10):
+- Added `src/app/create-event.tsx`: guided, conditional steps; local event times are converted with
+  the selected IANA timezone; zod validates event, venue, online-link, and ticket data; price entry
+  is parsed directly to integer kobo. Online meeting URLs are HTTPS-only and remain private in the
+  event model.
+- Community tab starts event creation and lists saved drafts with a continue-editing action.
+  Drafts and ticket types use the existing mock API and remain clearly non-production.
+- Draft save and publish are distinct actions. Publishing calls the mock API publication operation
+  only after event/ticket persistence; it does not claim a real backend publication.
+- Added `src/components/ui/step-dots.tsx`. Reused existing Button, Input, Field, Card, Chip,
+  themed components, query hooks, and event contracts.
+- The former Host tab is now Community, retaining the draft list and adding a floating create
+  button. The first wizard item is a rectangular image/video cover picker with paste-link support.
+  Device videos are limited to 30 seconds; media is previewed with Expo Image/Video.
+- Gaps: selected device media is local-only in mock mode until a trusted upload/storage API exists;
+  Places autocomplete/map preview await the backend proxy; per-ticket sale windows follow the
+  event's registration window rather than having separate controls.
+- Verification: `npx tsc --noEmit` ✓ · `npx expo lint` ✓ ·
+  `npx expo export --platform web` ✓ (Metro cache deserialize warning recovered via full crawl).
 
 ### Phase 7 — Registration (free path)
 - [ ] Guest registration (name/email) via wizard
@@ -249,3 +270,5 @@ Plus feature-specific review against `claude.md` rules. Report commands run and 
 | 2026-11-10 | 2 | Root `Stack` + `(tabs)` group with 4 placeholder screens; `AppTabs`/`app-tabs.web.tsx` rewired to Discover·Tickets·Host·Profile; new tab icons via `scripts/gen-tab-icons.mjs`; router.d.ts route table refreshed; web export smoke test | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 3–10 |
 | 2026-11-10 | 3 | API layer: `ApiClient` contract interface, labelled in-memory mock (zod-validated outputs, hold inventory, simulated server-side webhook settle + ledger writes, withdrawal lifecycle), TanStack Query v5 domain hooks + provider wiring, console MOCK banner | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 4–10; real HTTPS client at backend phase (single swap in `src/api/client.ts`) |
 | 2026-11-10 | 4 | UI primitives in `src/components/ui/` (Button/Input/Field/Card/Chip/Money/States) on Themed* conventions; added `success`/`danger` theme tokens | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Phases 5–10; StepDots deferred to Phase 6 |
+| 2026-11-10 | 6 update | Replaced Host tab with Community, added bottom-left create-event FAB, placed rectangular image/video picker first in the wizard, added link entry and video preview (30-second limit), and added optional public `coverVideoUrl` contract support | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ · `git diff --check` ✓ | Device files remain local-only until media storage API is implemented |
+| 2026-11-10 | 6 | Guided create-event wizard, timezone-aware date entry, online/offline and free/paid paths, multiple ticket types, capacity/registration windows, review, explicit draft/publish actions, and Host draft-resume list; added StepDots UI | `npx tsc --noEmit` ✓ · `npx expo lint` ✓ · `npx expo export --platform web` ✓ | Mock persistence only; image upload, Places autocomplete/map preview, and independent ticket sales windows remain deferred |

@@ -28,8 +28,8 @@ export default function AppTabs() {
           <TabTrigger name="tickets" href="/tickets" asChild>
             <TabButton>Tickets</TabButton>
           </TabTrigger>
-          <TabTrigger name="host" href="/host" asChild>
-            <TabButton>Host</TabButton>
+          <TabTrigger name="community" href="/community" asChild>
+            <TabButton>Community</TabButton>
           </TabTrigger>
           <TabTrigger name="profile" href="/profile" asChild>
             <TabButton>Profile</TabButton>

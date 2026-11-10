@@ -28,10 +28,10 @@ export default function AppTabs() {
         />
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="host">
-        <NativeTabs.Trigger.Label>Host</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="community">
+        <NativeTabs.Trigger.Label>Community</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/host.png')}
+          src={require('@/assets/images/tabIcons/explore.png')}
           renderingMode="template"
         />
       </NativeTabs.Trigger>

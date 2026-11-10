@@ -30,7 +30,7 @@ This creates four supported combinations: free online, paid online, free offline
 
 An event should support, as appropriate:
 - Title and description
-- Cover image
+- Cover image or short video (up to 30 seconds)
 - Organiser information
 - Start and end date/time, including timezone
 - Event format
